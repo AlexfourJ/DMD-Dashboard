@@ -25,9 +25,9 @@ import altair as alt
 st.set_page_config(page_title="Dashboard", layout="wide")
  
 # Färger - byt gärna ut
-HUVUDFARG = "#0B3C5D"
-ACCENT    = "#D9B310"
-LJUS      = "#328CC1"
+HUVUDFARG = "#0B5D37"
+ACCENT    = "#D98910"
+LJUS      = "#32C185"
  
 # CSS som styr utseendet på rubriker, nyckeltal och grafer
 st.markdown(f"""
@@ -75,6 +75,8 @@ def tal(varde, enhet=""):
     return f"{varde:,.0f}".replace(",", " ") + enhet
  
  
+# 
+
 HOJD = 210   # grafernas höjd i pixlar, sänk om allt inte får plats
  
 # Stapeldiagram med stående staplar
@@ -162,14 +164,22 @@ def klickad_manad():
 # ----------------------------
  
 # Läs in data - alla filer har kolumnen manad
-klass    = las("intakt_per_status.csv")
-status   = las("bokningar_per_status.csv")
-per_dag  = las("flygningar_per_dag.csv")
-toppen   = las("topp_passagerare.csv")
- 
+land    = las("forsäljning_land.csv")
+best   = las("bestallningar_land.csv")
+per_dag  = las("forsaljning_per_dag.csv")
+medlemmar   = las("medlemmar_land.csv")
+arsforsaljning     = las("forsaljning_per_ar.csv")  #läs in årsdata, används inte i graferna men kan användas i nyckeltal
+
+forsaljning_2025 = arsforsaljning.loc[
+    arsforsaljning["ar"] == 2025, "forsaljning"
+].sum()
+
+forsaljning_2026 = arsforsaljning.loc[
+    arsforsaljning["ar"] == 2026, "forsaljning"
+].sum()
  
 # Filter: månaden man klickat på i månadsgrafen - gäller ALLA grafer
-alla_manader = klass            # sparas ofiltrerad, månadsgrafen ska alltid visa alla
+alla_manader = land            # sparas ofiltrerad, månadsgrafen ska alltid visa alla
 vald = klickad_manad()
  
 def valj_manad(df):
@@ -178,29 +188,30 @@ def valj_manad(df):
         return df
     return df[df["manad"] == vald]
  
-klass   = valj_manad(klass)
-status  = valj_manad(status)
+land    = valj_manad(land)
+best   = valj_manad(best)
 per_dag = valj_manad(per_dag)
-toppen  = valj_manad(toppen)
+medlemmar   = valj_manad(medlemmar)
+
  
  
 # Rubrik
-st.title("SAS – bokningsöversikt")
-st.caption(f"Data från MySQL · {'mars–maj 2026' if vald == 'Alla' else vald}")
+st.title("Klädbutik – Föräljnings Översikt")
+st.caption(f"Data från MySQL · {'nov 2025–maj 2026' if vald == 'Alla' else vald}")
  
  
 #  Nyckeltal: fyra stora siffror
-intakt     = summa(klass, "intakt")
-bokningar  = summa(klass, "antal_bokningar")
-flygningar = summa(per_dag, "flygningar")
-forsenade  = summa(per_dag, "forsenade")
+intakt     = summa(land, "intakt")
+antal_bestallningar  = summa(best, "antal_bestallningar")
+forsaljning  = summa(per_dag, "forsaljning")
+#forsenade  = summa(per_dag, "forsenade")
  
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("Total intäkt", tal(intakt, " kr"))
-k2.metric("Bokningar",    tal(bokningar))
-k3.metric("Flygningar",   tal(flygningar))
-k4.metric("Andel försenade", f"{forsenade / flygningar:.0%}" if flygningar else "–")
- 
+k2.metric("Beställningar",    tal(antal_bestallningar))
+k3.metric("Total försäljning 2025", tal(forsaljning_2025) +" kr")
+k4.metric("Total försäljning 2026", tal(forsaljning_2026) +" kr")
+ #k3.metric("Försäljning",   tal(forsaljning))
  
 # Klickbar månadsgraf
 manadsgraf(alla_manader, y="intakt", titel="Intäkt per månad")
@@ -209,17 +220,17 @@ manadsgraf(alla_manader, y="intakt", titel="Intäkt per månad")
 # Rad 1: två grafer 
 v, h = st.columns(2)
 with v:
-    stapel(klass, x="ticket_class", y="intakt", titel="Intäkt per biljettklass")
+    stapel(land, x="land", y="intakt", titel="Intäkt per land")
 with h:
-    stapel(status, x="status", y="bokningar", titel="Bokningar per flygstatus")
+    stapel(best, x="land", y="antal_bestallningar", titel="Beställningar per land")
  
  
 # Rad 2: två grafer 
 v, h = st.columns(2)
 with v:
-    linje(per_dag, x="datum", y="flygningar", titel="Flygningar per dag")
+    linje(per_dag, x="dag", y="forsaljning", titel="Försäljning per dag")
 with h:
-    liggande(toppen, x="passagerare", y="spenderat", titel="Topp 10 kunder – spenderat belopp")
+    liggande(medlemmar, x="land", y="antal_medlemmar", titel="Antalet medlemmar per land")
  
  
  
